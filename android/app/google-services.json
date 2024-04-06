@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "882094651598",
+    "firebase_url": "https://theconceptcure-default-rtdb.firebaseio.com",
+    "project_id": "theconceptcure",
+    "storage_bucket": "theconceptcure.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882094651598:android:29fda17366a5e25e8fb89f",
+        "android_client_info": {
+          "package_name": "com.bot.chat_bot"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "882094651598-u3g6oo7f0aur59qnn7525q3c2meb3qle.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.bot.chat_bot",
+            "certificate_hash": "963b603df0bfc5210457c840246673b61b304f42"
+          }
+        },
+        {
+          "client_id": "882094651598-qrqufosga5a2s9g7ekscaqle4jkm5srb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB_zyZexdJ58Q7mXdj41Qm92bu21YlwHrA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "882094651598-qrqufosga5a2s9g7ekscaqle4jkm5srb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
