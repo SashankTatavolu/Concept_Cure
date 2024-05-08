@@ -50,7 +50,9 @@ dependencies:
   http: ^0.13.6
   http_parser: ^4.0.0
   permission_handler: ^11.3.1
+  video_player: ^2.4.2
 
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -84,12 +86,9 @@ flutter:
     - assets/capsule4.png
     - assets/capsule5.png
     - assets/capsule6.png
-    - assets/listening.gif
-    - assets/thinking.gif
-    - assets/speaking.gif
-    - assets/profile_picture.jpg
-    - assets/image24.png
-    - assets/Thinking.png
+    - assets/Thinking.gif
+    - assets/Speaking.gif
+    - assets/Listening.gif
     
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

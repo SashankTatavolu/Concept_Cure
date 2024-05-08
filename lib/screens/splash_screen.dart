@@ -44,6 +44,8 @@
 //   }
 // }
 
+// ignore_for_file: use_build_context_synchronously, duplicate_ignore
+
 import 'package:chat_bot/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -81,8 +83,8 @@ class SplashScreen extends StatelessWidget {
           children: [
             Image.asset(
               'assets/frame1.png',
-              width: MediaQuery.of(context).size.width *
-                  0.8, // Use 80% of the device width
+              width: double.infinity, // Use 80% of the device width
+              fit: BoxFit.fill,
             ),
             const SizedBox(height: 10),
           ],

@@ -14,7 +14,37 @@
 // class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 //   List<String> _selectedLanguages = [];
 //   final DatabaseReference _database =
-//       FirebaseDatabase.instance.ref('User_Information');
+//       // FirebaseDatabase.instance.ref('User_Information');
+//       FirebaseDatabase.instance.ref('Sample_Data/Languages');
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _fetchLanguages();
+//   }
+
+//   void _fetchLanguages() {
+//     _database.once().then((event) {
+//       DataSnapshot snapshot = event.snapshot;
+//       Map<dynamic, dynamic> values = snapshot.value as Map<dynamic, dynamic>;
+//       List<String> languages = [];
+
+//       values.forEach((key, value) {
+//         if (key.startsWith('I_')) {
+//           // Assuming language keys start with 'I_'
+//           languages.add(value);
+//         }
+//       });
+
+//       setState(() {
+//         _selectedLanguages = languages;
+//       });
+
+//       print('Languages retrieved from the database: $languages');
+//     }).catchError((error) {
+//       print('Error fetching languages: $error');
+//     });
+//   }
 
 //   @override
 //   Widget build(BuildContext context) {
@@ -33,15 +63,7 @@
 //               const SizedBox(height: 20),
 //               CustomDropdown(
 //                 label: 'Select Language',
-//                 options: const [
-//                   'English',
-//                   'Bengali',
-//                   'Hindi',
-//                   'Punjabi',
-//                   'Marathi',
-//                   'Telugu',
-//                   'Malayalam'
-//                 ],
+//                 options: _selectedLanguages,
 //                 selectedOptions: _selectedLanguages,
 //                 onChanged: (List<String> values) {
 //                   setState(() {
@@ -292,36 +314,7 @@ class LanguageSelectionScreen extends StatefulWidget {
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   List<String> _selectedLanguages = [];
   final DatabaseReference _database =
-      FirebaseDatabase.instance.ref().child('Sample_Data').child('Languages');
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchLanguages();
-  }
-
-  void _fetchLanguages() {
-    _database.once().then((event) {
-      DataSnapshot snapshot = event.snapshot;
-      Map<dynamic, dynamic> values = snapshot.value as Map<dynamic, dynamic>;
-      List<String> languages = [];
-
-      values.forEach((key, value) {
-        if (key.startsWith('I_')) {
-          // Assuming language keys start with 'I_'
-          languages.add(value);
-        }
-      });
-
-      setState(() {
-        _selectedLanguages = languages;
-      });
-
-      print('Languages retrieved from the database: $languages');
-    }).catchError((error) {
-      print('Error fetching languages: $error');
-    });
-  }
+      FirebaseDatabase.instance.ref('User_Information');
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +333,14 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               const SizedBox(height: 20),
               CustomDropdown(
                 label: 'Select Language',
-                options: _selectedLanguages,
+                options: const [
+                  'English',
+                  'Hindi',
+                  'Telugu',
+                  'Bangali',
+                  'Marathi',
+                  'Bhojpuri'
+                ],
                 selectedOptions: _selectedLanguages,
                 onChanged: (List<String> values) {
                   setState(() {
@@ -402,14 +402,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   void _saveSelectedLanguages(List<String> languages) {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
-      // Assuming 'User_Information' is the reference for user information in your database
-      FirebaseDatabase.instance
-          .ref()
-          .child('User_Information')
-          .child(user.uid)
-          .child('languages')
-          .set(languages)
-          .then((_) {
+      _database.child(user.uid).set({
+        'languages': languages,
+      }).then((_) {
         // Languages saved successfully
         print('Languages saved: $languages');
       }).catchError((error) {
@@ -442,12 +437,12 @@ class CustomDropdown extends StatefulWidget {
   final ValueChanged<List<String>>? onChanged;
 
   const CustomDropdown({
-    Key? key,
+    super.key,
     required this.label,
     required this.options,
     required this.selectedOptions,
     this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   _CustomDropdownState createState() => _CustomDropdownState();
@@ -461,26 +456,26 @@ class _CustomDropdownState extends State<CustomDropdown> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8.0),
-              border: Border.all(color: Colors.black),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.5),
-                  spreadRadius: 2,
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-              color: Colors.white,
-            ),
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8.0),
+            border: Border.all(color: Colors.black),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.withOpacity(0.5),
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: const Offset(0, 2),
+              ),
+            ],
+            color: Colors.white,
+          ),
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.all(15.0),
