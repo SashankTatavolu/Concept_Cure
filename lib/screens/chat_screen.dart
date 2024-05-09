@@ -36,6 +36,7 @@ class _NextScreenState extends State<NextScreen> {
     _initAudioRecorder();
     _getCurrentUser();
     _initAudioPlayer();
+    // _sendInitialAPIRequest();
   }
 
   @override
@@ -66,14 +67,6 @@ class _NextScreenState extends State<NextScreen> {
     _audioPlayer ??= FlutterSoundPlayer();
     await _audioPlayer!.openPlayer();
   }
-
-  // Future<void> _toggleRecording() async {
-  //   if (!_isRecording) {
-  //     await _startRecording();
-  //   } else {
-  //     await _stopRecording();
-  //   }
-  // }
 
   Future<void> _toggleRecording() async {
     if (!_isRecording) {
@@ -193,6 +186,56 @@ class _NextScreenState extends State<NextScreen> {
     }
   }
 
+  // Future<void> _sendInitialAPIRequest() async {
+  //   try {
+  //     // Ensure user ID is available
+  //     if (_userId == null) {
+  //       print('User ID is not available');
+  //       return;
+  //     }
+
+  //     // Construct request body
+  //     var requestBody = {
+  //       'userId': _userId!,
+  //       'language': 'en',
+  //     };
+
+  //     // Send API request
+  //     var response = await http.post(
+  //       Uri.parse(
+  //           'http://conceptcure.centralindia.cloudapp.azure.com:443/initial_request'),
+  //       body: requestBody,
+  //     );
+
+  //     if (response.statusCode == 200) {
+  //       // Parse response and handle accordingly
+  //       var responseBody = response.body;
+  //       var jsonResponse = json.decode(responseBody);
+  //       var audioUrl = jsonResponse['audio_file'];
+
+  //       setState(() {
+  //         _isThinking = false;
+  //         _isPlayingAudio = true;
+  //       });
+
+  //       // Start playing audio
+  //       await _audioPlayer!.startPlayer(
+  //         fromURI: audioUrl,
+  //         whenFinished: () {
+  //           setState(() {
+  //             _isPlayingAudio = false;
+  //           });
+  //         },
+  //       );
+  //     } else {
+  //       print(
+  //           'Initial API request failed with status code: ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     print('Error sending initial API request: $e');
+  //   }
+  // }
+
   Widget _buildGif(String assetName) {
     return Image.asset(
       'assets/$assetName.gif',
@@ -207,85 +250,120 @@ class _NextScreenState extends State<NextScreen> {
         backgroundColor: const Color.fromRGBO(217, 223, 235, 1),
       ),
       body: Center(
-        child: _isRecording
-            ? _buildGif('Listening')
-            : _isThinking
-                ? _buildGif('Thinking')
-                : _isPlayingAudio
-                    ? _buildGif('Speaking')
-                    : const SizedBox(),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
+        child: Stack(
           children: [
-            DrawerHeader(
-              decoration: const BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: _userId != null
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundImage:
-                              NetworkImage(_auth.currentUser!.photoURL ?? ''),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          _userName ?? '',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                          ),
-                        ),
-                        Text(
-                          _userEmail ?? 'Email not available',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Container(),
-            ),
-            ListTile(
-              title: const Text('New Conversation'),
-              onTap: () {
-                // Implement new conversation action
-              },
-            ),
-            ListTile(
-              title: const Text('History'),
-              onTap: () {
-                // Implement history action
-              },
-            ),
-            ListTile(
-              title: const Text('Calendar'),
-              onTap: () {
-                // Implement calendar action
-              },
-            ),
-            ListTile(
-              title: const Text('Profile'),
-              onTap: () {
-                // Implement profile action
-              },
-            ),
-            ListTile(
-              title: const Text('Logout'),
-              onTap: () async {
-                await FirebaseAuth.instance.signOut();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SignInScreen()),
-                );
-              },
+            // Display the Listening GIF by default
+            _buildGif('Listening'),
+            // Display other GIFs conditionally based on state
+            if (_isThinking) _buildGif('Thinking'),
+            if (_isPlayingAudio) _buildGif('Speaking'),
+          ],
+        ),
+      ),
+      drawer: Container(
+        width: MediaQuery.of(context).size.width *
+            0.60, // Adjust drawer width as needed
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: const BorderRadius.only(
+            topRight: Radius.circular(30.0), // Adjust border radius as needed
+            bottomRight:
+                Radius.circular(30.0), // Adjust border radius as needed
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.5),
+              spreadRadius: 5,
+              blurRadius: 7,
+              offset: const Offset(0, 3), // changes position of shadow
             ),
           ],
+        ),
+        child: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: const BoxDecoration(
+                  color: Colors.blue,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(
+                        20.0), // Match the container's border radius
+                    bottomRight: Radius.circular(
+                        20.0), // Match the container's border radius
+                  ),
+                ),
+                child: _userId != null
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundImage:
+                                NetworkImage(_auth.currentUser!.photoURL ?? ''),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _userName ?? '',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                            ),
+                          ),
+                          Text(
+                            _userEmail ?? 'Email not available',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Container(),
+              ),
+              ListTile(
+                title: const Text('New Conversation'),
+                onTap: () {
+                  // Implement new conversation action
+                },
+              ),
+              ListTile(
+                title: const Text('History'),
+                onTap: () {
+                  // Implement history action
+                },
+              ),
+              ListTile(
+                title: const Text('Calendar'),
+                onTap: () {
+                  // Implement calendar action
+                },
+              ),
+              ListTile(
+                title: const Text('Profile'),
+                onTap: () {
+                  // Implement profile action
+                },
+              ),
+              ListTile(
+                title: const Text('Logout'),
+                onTap: () async {
+                  await FirebaseAuth.instance.signOut();
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const SignInScreen()),
+                  );
+                },
+              ),
+              ListTile(
+                title: const Text(
+                    'Throw Test Exception'), // Add the option in the drawer
+                onTap: () =>
+                    throw Exception(), // Throw test exception when tapped
+              ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: Stack(

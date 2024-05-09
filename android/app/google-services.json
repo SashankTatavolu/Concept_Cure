@@ -38,6 +38,13 @@
             {
               "client_id": "882094651598-qrqufosga5a2s9g7ekscaqle4jkm5srb.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "882094651598-51vdt0cg46for861nrj92tjsvk5910dg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.chatBot"
+              }
             }
           ]
         }
