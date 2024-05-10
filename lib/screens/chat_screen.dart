@@ -4,15 +4,17 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:chat_bot/screens/Sign_in.dart';
+// import 'package:flutter/services.dart' show ByteData, rootBundle;
 
 class NextScreen extends StatefulWidget {
-  const NextScreen({Key? key}) : super(key: key);
+  const NextScreen({super.key});
 
   @override
   _NextScreenState createState() => _NextScreenState();
@@ -36,7 +38,7 @@ class _NextScreenState extends State<NextScreen> {
     _initAudioRecorder();
     _getCurrentUser();
     _initAudioPlayer();
-    // _sendInitialAPIRequest();
+    // _sendInitialRequest();
   }
 
   @override
@@ -44,6 +46,7 @@ class _NextScreenState extends State<NextScreen> {
     _audioRecorder?.stopRecorder();
     _audioRecorder?.closeRecorder();
     _audioPlayer?.closePlayer();
+    _stopAudioPlayback();
     super.dispose();
   }
 
@@ -66,6 +69,29 @@ class _NextScreenState extends State<NextScreen> {
   Future<void> _initAudioPlayer() async {
     _audioPlayer ??= FlutterSoundPlayer();
     await _audioPlayer!.openPlayer();
+
+    // Load the audio file from assets
+    ByteData audioData = await rootBundle.load('assets/Greeting.wav');
+    List<int> audioBytes = audioData.buffer.asUint8List();
+    // Convert the audio bytes to a file path
+    Directory tempDir = await getTemporaryDirectory();
+    String tempPath = tempDir.path;
+    String audioFilePath = '$tempPath/your_audio_file.wav';
+    // Write the audio bytes to a file
+    await File(audioFilePath).writeAsBytes(audioBytes);
+
+    // Start playing the audio file
+    await _audioPlayer!.startPlayer(
+        fromURI: audioFilePath,
+        whenFinished: () {
+          setState(() {
+            _isPlayingAudio = false;
+          });
+        });
+    // Set the state to indicate that audio is playing
+    setState(() {
+      _isPlayingAudio = true;
+    });
   }
 
   Future<void> _toggleRecording() async {
@@ -186,39 +212,49 @@ class _NextScreenState extends State<NextScreen> {
     }
   }
 
-  // Future<void> _sendInitialAPIRequest() async {
+  // Future<void> _sendInitialRequest() async {
   //   try {
-  //     // Ensure user ID is available
-  //     if (_userId == null) {
-  //       print('User ID is not available');
-  //       return;
-  //     }
+  //     // Load audio file from assets
+  //     ByteData audioData = await rootBundle.load('assets/audio.wav');
+  //     List<int> audioBytes = audioData.buffer.asUint8List();
 
-  //     // Construct request body
   //     var requestBody = {
   //       'userId': _userId!,
   //       'language': 'en',
   //     };
 
-  //     // Send API request
-  //     var response = await http.post(
+  //     var request = http.MultipartRequest(
+  //       'POST',
   //       Uri.parse(
-  //           'http://conceptcure.centralindia.cloudapp.azure.com:443/initial_request'),
-  //       body: requestBody,
+  //           'http://conceptcure.centralindia.cloudapp.azure.com:443/upload'),
   //     );
 
-  //     if (response.statusCode == 200) {
-  //       // Parse response and handle accordingly
-  //       var responseBody = response.body;
-  //       var jsonResponse = json.decode(responseBody);
-  //       var audioUrl = jsonResponse['audio_file'];
+  //     request.fields.addAll(requestBody);
 
+  //     request.files.add(
+  //       http.MultipartFile.fromBytes(
+  //         'file',
+  //         audioBytes,
+  //         filename: 'your_audio_file.wav',
+  //         contentType: MediaType('audio', 'wav'),
+  //       ),
+  //     );
+
+  //     print('Sending initial API request...');
+  //     var response = await request.send();
+  //     print('Initial API request sent');
+
+  //     if (response.statusCode == 200) {
   //       setState(() {
   //         _isThinking = false;
   //         _isPlayingAudio = true;
   //       });
+  //       print('Initial API request successful');
 
-  //       // Start playing audio
+  //       var responseBody = await response.stream.bytesToString();
+  //       var jsonResponse = json.decode(responseBody);
+  //       var audioUrl = jsonResponse['audio_file'];
+
   //       await _audioPlayer!.startPlayer(
   //         fromURI: audioUrl,
   //         whenFinished: () {
