@@ -1,4 +1,4 @@
-// ignore_for_file: library_private_types_in_public_api, avoid_print, use_build_context_synchronously
+// ignore_for_file: avoid_print, use_build_context_synchronously, library_private_types_in_public_api
 
 import 'package:chat_bot/screens/chat_screen.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +24,8 @@ class _ProfilePageState extends State<ProfilePage> {
   String _schoolName = '';
   String _secretCode = '';
   String _mobileNumber = '';
+  List<String> _interests = [];
+  String _language = '';
 
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -32,6 +34,8 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _schoolNameController = TextEditingController();
   final TextEditingController _secretCodeController = TextEditingController();
   final TextEditingController _mobileNumberController = TextEditingController();
+  final TextEditingController _interestsController = TextEditingController();
+  final TextEditingController _languageController = TextEditingController();
 
   @override
   void initState() {
@@ -63,6 +67,9 @@ class _ProfilePageState extends State<ProfilePage> {
             _schoolName = userData['school_name'] ?? '';
             _secretCode = userData['secret_code'] ?? '';
             _mobileNumber = userData['mobile_number'] ?? '';
+            _interests =
+                (userData['interests'] as List<dynamic>).cast<String>();
+            _language = userData['language'] ?? '';
 
             _firstNameController.text = _firstName;
             _lastNameController.text = _lastName;
@@ -71,6 +78,8 @@ class _ProfilePageState extends State<ProfilePage> {
             _schoolNameController.text = _schoolName;
             _secretCodeController.text = _secretCode;
             _mobileNumberController.text = _mobileNumber;
+            _interestsController.text = _interests.join(', ');
+            _languageController.text = _language;
 
             _isLoading = false;
           });
@@ -102,6 +111,9 @@ class _ProfilePageState extends State<ProfilePage> {
         'school_name': _schoolNameController.text,
         'secret_code': _secretCodeController.text,
         'mobile_number': _mobileNumberController.text,
+        'interests':
+            _interestsController.text.split(',').map((e) => e.trim()).toList(),
+        'language': _languageController.text,
       });
 
       setState(() {
@@ -112,6 +124,9 @@ class _ProfilePageState extends State<ProfilePage> {
         _schoolName = _schoolNameController.text;
         _secretCode = _secretCodeController.text;
         _mobileNumber = _mobileNumberController.text;
+        _interests =
+            _interestsController.text.split(',').map((e) => e.trim()).toList();
+        _language = _languageController.text;
         _isEditing = false;
       });
     }
@@ -124,7 +139,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       key: scaffoldKey,
       appBar: AppBar(
-        title: const Text('Profile Page'),
+        title: const Text(''),
         backgroundColor: const Color.fromRGBO(217, 223, 235, 1),
         automaticallyImplyLeading: false,
         leading: IconButton(
@@ -169,6 +184,10 @@ class _ProfilePageState extends State<ProfilePage> {
                             'Secret Code', _secretCode, _secretCodeController),
                         _buildProfileItem('Mobile Number', _mobileNumber,
                             _mobileNumberController),
+                        _buildProfileItem('Interests', _interests.join(', '),
+                            _interestsController),
+                        _buildProfileItem(
+                            'Languages', _language, _languageController),
                         const SizedBox(height: 20),
                         _isEditing
                             ? ElevatedButton(
@@ -251,18 +270,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
             ),
-            ListTile(
-              title: const Text('History'),
-              onTap: () {
-                // Implement history action
-              },
-            ),
-            ListTile(
-              title: const Text('Calendar'),
-              onTap: () {
-                // Implement calendar action
-              },
-            ),
+            // ListTile(
+            //   title: const Text('History'),
+            //   onTap: () {
+            //     // Implement history action
+            //   },
+            // ),
+            // ListTile(
+            //   title: const Text('Calendar'),
+            //   onTap: () {
+            //     // Implement calendar action
+            //   },
+            // ),
             ListTile(
               title: const Text('Profile'),
               onTap: () {
@@ -291,7 +310,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildProfileItem(
       String label, String value, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.0),
+      padding: const EdgeInsets.symmetric(vertical: 0.1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -302,7 +321,7 @@ class _ProfilePageState extends State<ProfilePage> {
               fontSize: 16,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 0.5),
           Row(
             children: [
               Expanded(
@@ -348,7 +367,7 @@ class _ProfilePageState extends State<ProfilePage> {
           Container(
             height: 1,
             color: Colors.grey[300],
-            margin: const EdgeInsets.only(top: 4),
+            margin: const EdgeInsets.only(top: 2),
           ),
         ],
       ),

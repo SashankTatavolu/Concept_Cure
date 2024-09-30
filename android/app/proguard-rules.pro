@@ -1,0 +1,4 @@
+-keep class com.google.android.gms.** { *; }
+-keep class com.google.firebase.** { *; }
+-keep class com.google.api.client.extensions.android.http.AndroidHttp { *; }
+-keep class com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential { *; }
