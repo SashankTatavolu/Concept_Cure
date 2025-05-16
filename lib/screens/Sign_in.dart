@@ -1,9 +1,11 @@
 // ignore_for_file: avoid_print, file_names, use_build_context_synchronously, library_private_types_in_public_api
 
 import 'package:chat_bot/screens/chat_screen.dart';
+import 'package:chat_bot/screens/language_selection_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -180,6 +182,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final GoogleSignIn googleSignIn = GoogleSignIn();
 
     try {
+      await googleSignIn.signOut();
       final GoogleSignInAccount? googleSignInAccount =
           await googleSignIn.signIn();
       if (googleSignInAccount != null) {
@@ -191,14 +194,85 @@ class _SignInScreenState extends State<SignInScreen> {
           accessToken: googleSignInAuthentication.accessToken,
         );
 
-        await FirebaseAuth.instance.signInWithCredential(credential);
+        // Sign in to Firebase with Google credentials
+        UserCredential userCredential =
+            await FirebaseAuth.instance.signInWithCredential(credential);
+
+        // Check if the user exists in the Realtime Database
+        await _checkUserInRealtimeDatabase(userCredential.user!, context);
+      } else {
+        _showErrorDialog(context, "Sign in failed. Please try again.");
+      }
+    } catch (e) {
+      print("Error signing in with Google: $e");
+      _showErrorDialog(context, "Sign in failed. Please try again.");
+    }
+  }
+
+  Future<void> _checkUserInRealtimeDatabase(
+      User user, BuildContext context) async {
+    final DatabaseReference database = FirebaseDatabase.instance.ref();
+
+    // Path to the "Users" node
+    DatabaseReference userRef = database.child('Users/${user.uid}');
+
+    try {
+      // Check if user data already exists
+      DataSnapshot snapshot = await userRef.get();
+
+      if (snapshot.exists) {
+        // Debug log
+        print("User exists in database: ${user.uid}");
+
+        // Navigate to the main screen
         Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const NextScreen()),
         );
+      } else {
+        // Debug log
+        print("New user, adding to database: ${user.uid}");
+
+        // User doesn't exist, register user in the Realtime Database
+        await userRef.set({
+          'uid': user.uid,
+          'email': user.email,
+          'displayName': user.displayName,
+          'photoURL': user.photoURL,
+          // Add other relevant fields here
+        });
+
+        // Navigate to the language selection screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const LanguageSelectionScreen()),
+        );
       }
     } catch (e) {
-      print("Error signing in with Google: $e");
+      // Log and show error dialog
+      print("Error in checking user in database: $e");
+      _showErrorDialog(context, "An error occurred. Please try again.");
     }
+  }
+
+  void _showErrorDialog(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Error"),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

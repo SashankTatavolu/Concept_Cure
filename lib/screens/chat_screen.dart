@@ -1,8 +1,13 @@
+// ignore_for_file: library_private_types_in_public_api, avoid_print, use_build_context_synchronously
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:chat_bot/main.dart';
 import 'package:chat_bot/screens/profile_page.dart';
+import 'package:chat_bot/screens/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,6 +19,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:chat_bot/screens/Sign_in.dart';
 // import 'package:flutter/services.dart' show ByteData, rootBundle;
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NextScreen extends StatefulWidget {
   const NextScreen({super.key});
@@ -34,12 +41,18 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
   String? _lastName;
   String? _userEmail;
   String? recordingPath;
-  Timer? _responseTimer;
   final DatabaseReference _database =
       FirebaseDatabase.instance.ref('User_Information');
   static bool _greetingPlayed = false;
+  DateTime? _recordingStartTime;
+  DateTime? _recordingEndTime;
+  DateTime? _apiResponseTime;
+  String? _currentSessionId;
 
   late AnimationController _animationController;
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
   @override
   void initState() {
@@ -48,6 +61,8 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
     _getCurrentUser();
     _initAudioPlayer();
     _initAnimationController();
+    _configureFirebaseMessaging();
+    _configureFlutterLocalNotifications();
   }
 
   void _initAnimationController() {
@@ -57,13 +72,112 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
     );
   }
 
+  Future<void> _configureFirebaseMessaging() async {
+    try {
+      await Firebase.initializeApp();
+
+      NotificationSettings settings =
+          await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        print('User granted permission');
+
+        String? token = await _firebaseMessaging.getToken();
+        print("FCM Token: $token");
+
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          print('Foreground message received: ${message.messageId}');
+          _showNotification(message);
+        });
+
+        FirebaseMessaging.onBackgroundMessage(
+            _firebaseMessagingBackgroundHandler);
+
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          print('User opened notification');
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const SplashScreen(),
+            ),
+          );
+        });
+      } else {
+        print('User declined or did not accept permission');
+      }
+    } catch (e) {
+      print('Error in configuring Firebase Messaging: $e');
+    }
+  }
+
+  Future<void> _firebaseMessagingBackgroundHandler(
+      RemoteMessage message) async {
+    try {
+      await Firebase.initializeApp(); // Ensure Firebase is initialized
+      print('Handling a background message: ${message.messageId}');
+    } catch (e) {
+      print('Error in background message handler: $e');
+    }
+  }
+
+  void _configureFlutterLocalNotifications() {
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+    );
+
+    flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        // Handle notification tapped logic here
+        print('Notification tapped with payload: ${response.payload}');
+      },
+    );
+  }
+
+  void _showNotification(RemoteMessage message) async {
+    RemoteNotification? notification = message.notification;
+    AndroidNotification? android = message.notification?.android;
+
+    if (notification != null && android != null) {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'your_channel_id', // Unique channel ID
+        'your_channel_name', // Channel name
+        channelDescription: 'your_channel_description',
+        importance: Importance.max,
+        priority: Priority.high,
+        ticker: 'ticker',
+      );
+
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
+        android: androidPlatformChannelSpecifics,
+      );
+
+      await flutterLocalNotificationsPlugin.show(
+        notification.hashCode,
+        notification.title,
+        notification.body,
+        platformChannelSpecifics,
+        payload: 'Notification Payload',
+      );
+    }
+  }
+
   @override
   void dispose() {
     _audioRecorder?.stopRecorder();
     _audioRecorder?.closeRecorder();
     _audioPlayer?.closePlayer();
     _stopAudioPlayback();
-    _responseTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -89,6 +203,11 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
   Future<void> _initAudioRecorder() async {
     _audioRecorder = FlutterSoundRecorder();
     await _audioRecorder!.openRecorder();
+
+    PermissionStatus status = await Permission.microphone.request();
+    if (!status.isGranted) {
+      print('Microphone permission not granted');
+    }
   }
 
   Future<void> _initAudioPlayer() async {
@@ -96,13 +215,32 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
     await _audioPlayer!.openPlayer();
 
     if (!_greetingPlayed) {
-      ByteData audioData = await rootBundle.load('assets/Greeting.wav');
+      // Fetch user's language from Firebase Realtime Database
+      String? userLanguage = await _fetchUserLanguageFromFirebase();
+
+      // Decide which greeting file to play based on the user's language
+      String greetingFile;
+      if (userLanguage == 'Telugu') {
+        greetingFile = 'assets/teluguGreeting.wav';
+      } else if (userLanguage == 'Hindi') {
+        greetingFile = 'assets/hindiGreeting.wav';
+      } else {
+        greetingFile = 'assets/englishGreeting.wav'; // Default to English
+      }
+
+      // Load the audio data from the selected greeting file
+      ByteData audioData = await rootBundle.load(greetingFile);
       List<int> audioBytes = audioData.buffer.asUint8List();
+
+      // Save the file temporarily in the device's storage
       Directory tempDir = await getTemporaryDirectory();
       String tempPath = tempDir.path;
-      String audioFilePath = '$tempPath/your_audio_file.wav';
+      String audioFilePath = '$tempPath/greeting.wav';
+
+      // Write the audio bytes to a file
       await File(audioFilePath).writeAsBytes(audioBytes);
 
+      // Start playing the selected greeting file
       await _audioPlayer!.startPlayer(
         fromURI: audioFilePath,
         whenFinished: () {
@@ -121,6 +259,13 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
 
   Future<void> _toggleRecording() async {
     if (!_isRecording) {
+      // Only start recording when the button is held down, not automatically
+      PermissionStatus status = await Permission.microphone.request();
+      if (!status.isGranted) {
+        print('Microphone permission not granted');
+        return;
+      }
+
       if (_isPlayingAudio) {
         await _stopAudioPlayback(); // Stop audio playback if it's ongoing
       }
@@ -143,6 +288,7 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
 
   Future<void> _startRecording() async {
     try {
+      updateLastOpenedDate();
       PermissionStatus status = await Permission.microphone.request();
       if (!status.isGranted) {
         print('Microphone permission not granted');
@@ -157,13 +303,30 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
         await _stopRecording();
       }
 
+      _recordingStartTime = DateTime.now(); // Capture start time
+      String sessionId = _recordingStartTime!.millisecondsSinceEpoch
+          .toString(); // Unique session ID
+
       await _audioRecorder!.startRecorder(toFile: recordingPath);
-      print('Recording started');
+
+      // **Save timestamp to Firebase**
+      if (_userId != null) {
+        DatabaseReference sessionRef = FirebaseDatabase.instance
+            .ref('User_Knowledge_Base/$_userId/Recordings/$sessionId');
+        await sessionRef.set({
+          'recording_start': _recordingStartTime!.toIso8601String(),
+        });
+      }
+
+      print('Recording started at $_recordingStartTime');
+      _currentSessionId = sessionId; // Save session ID for later use
+
       _animationController.forward();
+
       setState(() {
         _isRecording = true;
         _isThinking = false;
-        _isPlayingAudio = false; // Reset playing audio flag
+        _isPlayingAudio = false;
       });
     } catch (e) {
       print('Error starting recording: $e');
@@ -173,49 +336,33 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
   Future<void> _stopRecording() async {
     try {
       await _audioRecorder!.stopRecorder();
-      print('Recording stopped');
+      _recordingEndTime = DateTime.now(); // Capture stop time
+
+      // **Save timestamp to Firebase**
+      if (_userId != null && _currentSessionId != null) {
+        DatabaseReference sessionRef = FirebaseDatabase.instance
+            .ref('User_Knowledge_Base/$_userId/Recordings/$_currentSessionId');
+        await sessionRef.update({
+          'recording_end': _recordingEndTime!.toIso8601String(),
+        });
+      }
+
+      print('Recording stopped at $_recordingEndTime');
+
+      Duration recordingDuration =
+          _recordingEndTime!.difference(_recordingStartTime!);
+      print('Total recording duration: ${recordingDuration.inMilliseconds} ms');
+
       _animationController.reverse();
+
       setState(() {
         _isRecording = false;
         _isThinking = true;
       });
-      _startResponseTimer(); // Start the response timer
+
       await _submitAudioToAPI();
     } catch (e) {
       print('Error stopping recording: $e');
-    }
-  }
-
-  void _startResponseTimer() {
-    _responseTimer?.cancel();
-    _responseTimer = Timer(const Duration(seconds: 30), () {
-      if (_isThinking) {
-        _showTryAgainDialog();
-      }
-    });
-  }
-
-  Future<void> _showTryAgainDialog() async {
-    if (mounted) {
-      setState(() {
-        _isThinking = false;
-      });
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Response Timeout'),
-          content: const Text(
-              'The response is taking longer than expected. Please try recording again.'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
     }
   }
 
@@ -223,25 +370,17 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
     String? baseUrl = await _fetchBaseUrl();
 
     try {
-      // Fetch user's language from Firebase Realtime Database
       String? userLanguage = await _fetchUserLanguageFromFirebase();
-
-      // Map language to short code
-      String languageCode;
-      if (userLanguage == 'Telugu') {
-        languageCode = 'te';
-      } else if (userLanguage == 'Hindi') {
-        languageCode = 'hi';
-      } else {
-        languageCode = 'en'; // Default to English for other languages
-      }
+      String languageCode = (userLanguage == 'Telugu')
+          ? 'te'
+          : (userLanguage == 'Hindi' || userLanguage == "Hindi+English")
+              ? 'hi'
+              : 'en';
 
       var requestBody = {
         'userId': _userId!,
-        'language': languageCode, // Use the dynamically fetched language code
+        'language': languageCode,
       };
-
-      print(requestBody);
 
       var request = http.MultipartRequest(
         'POST',
@@ -249,7 +388,6 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
       );
 
       request.fields.addAll(requestBody);
-
       request.files.add(
         await http.MultipartFile.fromPath(
           'file',
@@ -258,35 +396,69 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
         ),
       );
 
-      print('Sending API request...');
+      DateTime apiRequestTime = DateTime.now(); // Capture API request time
+      print('API request sent at $apiRequestTime');
+
+      // **Save timestamp to Firebase**
+      if (_userId != null && _currentSessionId != null) {
+        DatabaseReference sessionRef = FirebaseDatabase.instance
+            .ref('User_Knowledge_Base/$_userId/Recordings/$_currentSessionId');
+        await sessionRef.update({
+          'api_request': apiRequestTime.toIso8601String(),
+        });
+      }
+
       var response = await request.send();
-      print('API request sent');
+      _apiResponseTime = DateTime.now(); // Capture response time
+
+      // **Save timestamp to Firebase**
+      if (_userId != null && _currentSessionId != null) {
+        DatabaseReference sessionRef = FirebaseDatabase.instance
+            .ref('User_Knowledge_Base/$_userId/Recordings/$_currentSessionId');
+        await sessionRef.update({
+          'api_response': _apiResponseTime!.toIso8601String(),
+        });
+      }
+
+      Duration apiProcessingTime = _apiResponseTime!.difference(apiRequestTime);
+      print('API response received at $_apiResponseTime');
+      print('API processing time: ${apiProcessingTime.inMilliseconds} ms');
 
       if (response.statusCode == 200) {
         var responseBody = await response.stream.bytesToString();
         var jsonResponse = json.decode(responseBody);
         var audioUrl = jsonResponse['audio_file'];
 
+        DateTime playbackStartTime =
+            DateTime.now(); // Capture playback start time
+        print('Starting playback at $playbackStartTime');
+
         await _audioPlayer!.startPlayer(
           fromURI: audioUrl,
           whenFinished: () {
+            DateTime playbackEndTime =
+                DateTime.now(); // Capture playback end time
+            print('Playback finished at $playbackEndTime');
+
+            Duration totalProcessingTime =
+                playbackEndTime.difference(_recordingStartTime!);
+            print(
+                'Total time from recording start to output playback: ${totalProcessingTime.inMilliseconds} ms');
+
             setState(() {
               _isPlayingAudio = false;
             });
           },
         );
 
-        _responseTimer?.cancel(); // Cancel the response timer
         setState(() {
-          _isThinking = false;
           _isPlayingAudio = true;
         });
-        print('API request successful');
       } else {
-        print('API request failed with status code: ${response.statusCode}');
+        print('Error: API response failed');
       }
     } catch (e) {
-      print('Error sending API request: $e');
+      print('Error submitting audio to API: $e');
     }
   }
 
@@ -458,7 +630,15 @@ class _NextScreenState extends State<NextScreen> with TickerProviderStateMixin {
         child: Align(
           alignment: Alignment.bottomCenter,
           child: GestureDetector(
-            onLongPress: _toggleRecording,
+            onLongPress: () async {
+              // Ensure microphone permission is granted before starting recording
+              PermissionStatus status = await Permission.microphone.request();
+              if (status.isGranted) {
+                await _toggleRecording();
+              } else {
+                print('Microphone permission denied');
+              }
+            },
             onLongPressUp: _stopRecording,
             child: ScaleTransition(
               scale: _isRecording

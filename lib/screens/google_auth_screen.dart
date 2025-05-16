@@ -93,6 +93,7 @@ class GoogleAuthScreen extends StatelessWidget {
     final GoogleSignIn googleSignIn = GoogleSignIn();
 
     try {
+      await googleSignIn.signOut();
       final GoogleSignInAccount? googleSignInAccount =
           await googleSignIn.signIn();
       if (googleSignInAccount != null) {

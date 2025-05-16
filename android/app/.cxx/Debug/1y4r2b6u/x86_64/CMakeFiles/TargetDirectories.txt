@@ -1,0 +1,2 @@
+/home/sashank/Desktop/Concept_cure/APP/android/app/.cxx/Debug/1y4r2b6u/x86_64/CMakeFiles/edit_cache.dir
+/home/sashank/Desktop/Concept_cure/APP/android/app/.cxx/Debug/1y4r2b6u/x86_64/CMakeFiles/rebuild_cache.dir

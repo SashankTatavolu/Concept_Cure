@@ -47,6 +47,8 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        if (!mounted)
+          return; // Ensure the widget is still mounted before calling setState
         setState(() {
           _user = user;
         });
@@ -59,6 +61,7 @@ class _ProfilePageState extends State<ProfilePage> {
         DataSnapshot snapshot = await userRef.get();
         if (snapshot.exists) {
           Map userData = snapshot.value as Map;
+          if (!mounted) return; // Ensure the widget is still mounted
           setState(() {
             _firstName = userData['first_name'] ?? '';
             _lastName = userData['last_name'] ?? '';
@@ -84,12 +87,14 @@ class _ProfilePageState extends State<ProfilePage> {
             _isLoading = false;
           });
         } else {
+          if (!mounted) return;
           setState(() {
             _isLoading = false;
           });
         }
       }
     } catch (error) {
+      if (!mounted) return; // Ensure the widget is still mounted
       setState(() {
         _isLoading = false;
       });
